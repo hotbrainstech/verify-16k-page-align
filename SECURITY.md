@@ -15,7 +15,7 @@ This repository is a boilerplate. For this template itself, only the latest publ
 
 Please do not open public GitHub issues for security vulnerabilities.
 
-- Submit a private report via GitHub Security Advisories: https://github.com/hebertcisco/ts-npm-package-boilerplate/security/advisories/new
+- Submit a private report via GitHub Security Advisories: https://github.com/hotbrainstech/verify-16k-page-align/security/advisories/new
 - If you cannot use advisories, you may open a minimal, non-exploitable issue requesting a security contact, and we will follow up privately.
 
 ### What to include

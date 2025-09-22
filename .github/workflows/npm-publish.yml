@@ -24,6 +24,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
+          scope: '@hotbrainstech'
+
+      - name: Install build tools
+        run: sudo apt-get install -y shc gcc shellcheck
       - run: npm i
       - run: npm run build
       - run: npm publish

@@ -1,175 +1,153 @@
-<p align="center">
- <img width="100px" src="https://raw.githubusercontent.com/hebertcisco/ts-npm-package-boilerplate/main/.github/images/favicon512x512-npm.png" align="center" alt=":package: ts-npm-package-boilerplate" />
- <h2 align="center">:package: ts-npm-package-boilerplate</h2>
- <p align="center">TypeScript NPM Module Boilerplate</p>
-  <p align="center">
-    <a href="https://github.com/hebertcisco/ts-npm-package-boilerplate/issues">
-      <img alt="Issues" src="https://img.shields.io/github/issues/hebertcisco/ts-npm-package-boilerplate?style=flat&color=336791" />
-    </a>
-    <a href="https://github.com/hebertcisco/ts-npm-package-boilerplate/pulls">
-      <img alt="GitHub pull requests" src="https://img.shields.io/github/issues-pr/hebertcisco/ts-npm-package-boilerplate?style=flat&color=336791" />
-    </a>
-    <a href="https://www.npmjs.com/package/ts-npm-package-boilerplate">
-      <img alt="npm weekly downloads" src="https://img.shields.io/npm/dw/ts-npm-package-boilerplate?style=flat&color=336791" />
-    </a>
-    <a href="https://www.npmjs.com/package/ts-npm-package-boilerplate">
-      <img alt="npm total downloads" src="https://img.shields.io/npm/dt/ts-npm-package-boilerplate?color=336791&label=Total%20downloads" />
-    </a>
-    <a href="https://github.com/hebertcisco/ts-npm-package-boilerplate/releases">
-      <img alt="GitHub release" src="https://img.shields.io/github/release/hebertcisco/ts-npm-package-boilerplate.svg?style=flat&color=336791" />
-    </a>
-    <br />
-    <a href="https://codecov.io/gh/hebertcisco/ts-npm-package-boilerplate">
-      <img alt="codecov" src="https://codecov.io/gh/hebertcisco/ts-npm-package-boilerplate/branch/main/graph/badge.svg?token=Q9fr548J0D" />
-    </a>
-    <br />
-    <a href="https://github.com/hebertcisco/ts-npm-package-boilerplate/issues/new/choose">Report Bug</a>
-    ·
-    <a href="https://github.com/hebertcisco/ts-npm-package-boilerplate/issues/new/choose">Request Feature</a>
-  </p>
+# verify-16k-page-align
 
-<h3 align="center">Tested on</h3>
-<p align="center">
-  <a href="https://www.apple.com/macos/">
-    <img alt="macOS" src="https://img.shields.io/badge/mac%20os-000000?style=for-the-badge&logo=apple&logoColor=white&style=flat" />
-  </a>
-  <a href="https://ubuntu.com/download">
-    <img alt="Ubuntu" src="https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white&style=flat" />
-  </a>
-  <a href="https://www.microsoft.com/windows/">
-    <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white&style=flat" />
-  </a>
-</p>
+[![npm version](https://img.shields.io/npm/v/verify-16k-page-align.svg)](https://www.npmjs.com/package/verify-16k-page-align)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+[![Linux Only](https://img.shields.io/badge/platform-linux-lightgrey)](#platform-support)
 
-<p align="center">Did you like the project? Please consider a <a href="https://www.buymeacoffee.com/hebertcisco">donation</a> to help improve!</p>
-
-<p align="center"><strong>TypeScript NPM Module Boilerplate</strong> ✨</p>
+A shell script and npm package to verify if your Android APK/AAB native libraries are aligned to 16KB (0x4000) memory pages. This is required for compatibility with Android 15+ devices and Google Play submissions after **November 1, 2025** ([see official docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)).
 
 ---
 
-## Table of Contents
-
-- Overview
-- Features
-- Prerequisites
-- Quick Start
-- Usage
-- Scripts
-- Project Structure
-- CI/CD
-- Publishing
-- Contributing
-- License
-
-## Overview
-
-Starter template for building and publishing typed Node.js libraries to npm using TypeScript, Jest, ESLint, and Prettier. It ships with sensible defaults, CI workflows, coverage upload to Codecov, and a minimal example implementation.
-
 ## Features
 
-- TypeScript build with declaration output to `lib/`.
-- Jest test setup with `ts-jest` and coverage.
-- ESLint + Prettier configured for TS.
-- GitHub Actions for tests/coverage and npm publish on release.
-- Prepublish hooks to lint and test before publishing.
+- Checks all native `.so` libraries in APK/AAB for 16KB page alignment
+- Works with both APK and AAB files
+- Uses `readelf` or `llvm-readelf` (auto-detects)
+- Fast, zero dependencies (besides unzip/readelf)
+- CLI and npm global install
+- Clear pass/fail output for CI/CD
 
-## Prerequisites
+---
 
-- Node.js 18+ (LTS recommended).
-- npm 9+.
+## Why 16KB Page Alignment?
 
-## Quick Start
+Starting with Android 15, many devices will use 16KB memory pages for improved performance and reliability. All apps targeting Android 15+ and distributed via Google Play **must** ensure their native libraries (`.so` files) are 16KB aligned. See:
+- [Android Developers: 16 KB Page Size](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)
+- [Google Play Blog: Prepare for 16 KB page size](https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html)
+- [Medium: Android 15 Mandatory 16KB Memory Page Size](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67)
+- [Reddit discussion](https://www.reddit.com/r/brdev/comments/1nl3fx4/android_15_seus_apps_j%C3%A1_est%C3%A3o_prontos_para_16kb/)
 
-Option A — Use as template (recommended):
+**Benefits:**
+- Faster app launches (3–30% improvement)
+- Lower battery usage
+- Reduced memory fragmentation
+- Required for Play Store submission (from Nov 2025)
 
-1. Click “Use this template” on GitHub to create your repo.
-2. Clone your new repo and install dependencies:
+---
 
-```bash
-git clone https://github.com/<your-username>/<your-repo>.git
-cd <your-repo>
-npm install
+## Installation
+
+### Shell script (one-liner)
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/hotbrainstech/verify-16k-page-align/main/src/verify-16k-page-align.sh)"
 ```
 
-Option B — Clone this repository directly:
-
-```bash
-git clone https://github.com/hebertcisco/ts-npm-package-boilerplate
-cd ts-npm-package-boilerplate
-npm install
-# Optional: reset git history
-rm -rf .git && git init && git add . && git commit -m "Initial commit"
+### NPM global install
+```sh
+sudo npm i -g verify-16k-page-align
 ```
 
-Then update `package.json` fields: `name`, `version`, `description`, `author`, `repository`, `bugs`, and `homepage`.
-
-Edit the icon on Figma if you want:
-
-<a href="https://www.figma.com/file/vpevGX3j9tmtW8OyLQ9eUm/ts-npm-package-boilerplate-icon?node-id=0%3A1">
-   <img alt="Figma Icon" src="https://raw.githubusercontent.com/hebertcisco/ts-npm-package-boilerplate/main/.github/images/figma-badge.png"/>
-</a>
+---
 
 ## Usage
 
-This template includes a simple `Uuid` helper as an example. After building, the entry point is `lib/index.js` with types in `lib/index.d.ts`.
-
-Example:
-
-```ts
-import uuid from 'ts-npm-package-boilerplate';
-// or: import { Uuid } from 'ts-npm-package-boilerplate';
-
-const id = uuid.v4();
-console.log(id); // 3f52c6f8-7a8e-4c04-b4a0-bf5f7d3e9f0a
+### Check an APK or AAB file
+```sh
+verify-16k-page-align <path-to-apk-or-aab>
+```
+Or, if using the raw script:
+```sh
+sh ./src/verify-16k-page-align.sh <path-to-apk-or-aab>
 ```
 
-During development (from this repo):
+#### Example output
+```
+Using readelf: /usr/bin/readelf
+Inspecting: app-release.apk
+Found 3 native libraries
+[OK]   lib/arm64-v8a/libfoo.so aligned to 16KB (no 0x1000 LOAD segments detected).
+[FAIL] lib/arm64-v8a/libbar.so has LOAD segment aligned to 0x1000 (4KB).
 
-```ts
-import uuid from './src';
+One or more native libraries are not 16KB aligned.
+Ensure AGP >= 8.5.1, NDK r27+, and rebuild any third-party .so with 16KB page alignment.
 ```
 
-## Scripts
+#### CI/CD Example
+Add to your pipeline to fail builds if any library is not 16KB aligned.
 
-- `npm run build`: Compile TypeScript to `lib/`.
-- `npm test`: Run tests with Jest.
-- `npm run lint`: Lint code with ESLint.
-- `npm run lint:fix`: Fix lint issues.
-- `npm run format`: Format with Prettier.
+---
 
-Important lifecycle hooks:
+## How It Works
 
-- `prepare`: Runs `npm run build` so the package is built before pack/publish.
-- `prepublishOnly`: Runs tests and linting before `npm publish`.
-- `version`: Formats and stages changes when bumping version with `npm version`.
+1. Extracts all `.so` files from your APK/AAB
+2. Uses `readelf` or `llvm-readelf` to inspect ELF program headers
+3. Flags any library with a LOAD segment aligned to 4KB (0x1000)
+4. Passes if all LOAD segments are aligned to 16KB (0x4000)
 
-## Project Structure
+---
 
-- `src/`: Source code (TypeScript).
-- `src/helpers/uuid.ts`: Example implementation.
-- `src/__tests__/`: Jest tests.
-- `lib/`: Compiled JS + type definitions (generated).
+## Platform Support
 
-## CI/CD
+- Linux only (uses bash, unzip, readelf)
+- Not supported on Windows or macOS
 
-GitHub Actions are included:
+---
 
-- `.github/workflows/coverage.yml`: Runs tests on Node 18/20/22 and uploads coverage to Codecov. Set `CODECOV_TOKEN` secret for private repos.
-- `.github/workflows/npm-publish.yml`: On GitHub release creation, builds and publishes to npm. Set `NPM_TOKEN` secret with publish rights.
+## Requirements
 
-## Publishing
+- unzip
+- readelf or llvm-readelf (from binutils or Android NDK)
 
-1. Ensure you are logged in: `npm login`.
-2. Update `package.json` metadata and ensure `files` includes what you want to publish.
-3. Bump version: `npm version patch|minor|major`.
-4. Publish: `npm publish`.
+---
 
-Alternatively, create a GitHub Release and let the publish workflow handle it (requires `NPM_TOKEN`).
+## Migration Guide
+
+If your app or any dependency uses native code:
+- **Update your build tools:** Use Android Gradle Plugin (AGP) >= 8.5.1 and NDK r27+ (prefer r28+)
+- **Recompile all native libraries** with 16KB alignment
+- **Remove hardcoded page size assumptions** (replace `4096`/`0x1000`/`PAGE_SIZE` with `sysconf(_SC_PAGESIZE)`)
+- **Check all third-party .so files** for compliance
+- **Test on Android 15+ emulators or real devices**
+
+See [official migration steps](https://developer.android.com/guide/practices/page-sizes?hl=pt-br#compile-16-kb-alignment) and [Medium migration guide](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67).
+
+---
+
+## Troubleshooting
+
+- If you see `[FAIL] ... has LOAD segment aligned to 0x1000 (4KB)`, update and rebuild the affected library.
+- For AGP < 8.5.1, use `packagingOptions.jniLibs.useLegacyPackaging true` in `build.gradle` (not recommended).
+- For NDK < r27, set linker flags: `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384`.
+
+---
+
+## FAQ
+
+**Q: Does this work for Java/Kotlin-only apps?**
+A: No need—Java/Kotlin-only apps do not use native libraries and are already compatible.
+
+**Q: What if my library is not 16KB aligned?**
+A: Update your build tools and recompile. Contact third-party vendors for updated .so files.
+
+**Q: Can I use this on macOS or Windows?**
+A: No, Linux only. Use a Linux VM or Docker if needed.
+
+**Q: Is this required for Play Store submission?**
+A: Yes, for Android 15+ apps after Nov 1, 2025.
+
+---
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome. Check the issues page:
-<https://github.com/hebertcisco/ts-npm-package-boilerplate/issues>
+Pull requests and issues are welcome! See [GitHub Issues](https://github.com/hotbrainstech/verify-16k-page-align/issues).
+
+---
+
+## References & Further Reading
+- [Android 16KB Page Size Docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)
+- [Google Play Blog](https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html)
+- [Medium: Migration Guide](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67)
+- [Reddit: brdev discussion](https://www.reddit.com/r/brdev/comments/1nl3fx4/android_15_seus_apps_j%C3%A1_est%C3%A3o_prontos_para_16kb/)
 
 ## Show your support
 
@@ -183,6 +161,6 @@ Or buy me a coffee 🙌🏾
 
 ## 📝 License
 
-Copyright © 2025 [@hebertcisco](https://github.com/hebertcisco).
+Copyright © 2025 [@hotbrainstech](https://github.com/hotbrainstech).
 
 This project is [MIT](LICENSE) licensed.
