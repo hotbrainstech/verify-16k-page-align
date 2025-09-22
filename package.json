@@ -1,7 +1,7 @@
 {
   "name": "verify-16k-page-align",
   "version": "0.0.1",
-  "description": "A simple shell script to verify if a android app is 16k page aligned",
+  "description": "Shell script and npm package to verify Android APK/AAB/APEX native libraries are 16KB or 64KB page aligned for Android 15+ compatibility",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "private": false,
@@ -12,7 +12,7 @@
   "license": "MIT",
   "scripts": {
     "lint": "shellcheck src/verify-16k-page-align.sh",
-    "lint:fix": "shellcheck -f gcc -o ./lib/verify-16k-page-align.sh",
+    "test": "./src/verify-16k-page-align.sh --help",
     "version": "git add -A src",
     "postversion": "git push && git push --tags"
   },
@@ -23,7 +23,7 @@
     "node": ">=20.0.0"
   },
   "files": [
-    "bin/**/*"
+    "src/**/*"
   ],
   "os": [
     "linux",
@@ -39,9 +39,19 @@
   },
   "keywords": [
     "android",
+    "android-15",
+    "16kb-pages",
+    "page-alignment",
+    "apk",
+    "aab",
+    "apex",
+    "native-libraries",
+    "elf",
+    "objdump",
     "react-native",
     "npm",
-    "module"
+    "shell-script",
+    "ci-cd"
   ],
   "bugs": {
     "url": "https://github.com/hotbrainstech/verify-16k-page-align/issues"

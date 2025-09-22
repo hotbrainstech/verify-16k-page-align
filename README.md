@@ -4,24 +4,26 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![Linux Only](https://img.shields.io/badge/platform-linux-lightgrey)](#platform-support)
 
-A shell script and npm package to verify if your Android APK/AAB native libraries are aligned to 16KB (0x4000) memory pages. This is required for compatibility with Android 15+ devices and Google Play submissions after **November 1, 2025** ([see official docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)).
+A shell script and npm package to verify if your Android APK/AAB/APEX native libraries are aligned to 16KB or 64KB memory pages. This is required for compatibility with Android 15+ devices and Google Play submissions after **November 1, 2025** ([see official docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)).
 
 ---
 
 ## Features
 
-- Checks all native `.so` libraries in APK/AAB for 16KB page alignment
-- Works with both APK and AAB files
-- Uses `readelf` or `llvm-readelf` (auto-detects)
-- Fast, zero dependencies (besides unzip/readelf)
+- Checks all native `.so` libraries in APK/AAB/APEX for 16KB or 64KB page alignment
+- Works with APK, AAB, and APEX files
+- Uses `objdump` to analyze ELF program headers
+- Includes APK zip-alignment verification (requires Android build-tools 35.0.0-rc3+)
+- Fast, zero dependencies (besides unzip/objdump)
 - CLI and npm global install
 - Clear pass/fail output for CI/CD
+- Supports both arm64-v8a and x86_64 architectures
 
 ---
 
 ## Why 16KB Page Alignment?
 
-Starting with Android 15, many devices will use 16KB memory pages for improved performance and reliability. All apps targeting Android 15+ and distributed via Google Play **must** ensure their native libraries (`.so` files) are 16KB aligned. See:
+Starting with Android 15, many devices will use 16KB memory pages for improved performance and reliability. All apps targeting Android 15+ and distributed via Google Play **must** ensure their native libraries (`.so` files) are 16KB or 64KB aligned. See:
 - [Android Developers: 16 KB Page Size](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)
 - [Google Play Blog: Prepare for 16 KB page size](https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html)
 - [Medium: Android 15 Mandatory 16KB Memory Page Size](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67)
@@ -52,45 +54,48 @@ sudo npm i -g verify-16k-page-align
 ## Usage
 
 
-### Check an APK or AAB file
+### Check an APK, AAB, or APEX file
 By default, only `arm64-v8a` libraries are checked. To also check `x86_64` libraries, add `x86` as a second argument.
 
 ```sh
 # Default: check arm64-v8a only
-verify-16k-page-align <path-to-apk-or-aab>
+verify-16k-page-align <path-to-apk-aab-or-apex>
 
 # Check arm64-v8a and x86_64
-verify-16k-page-align <path-to-apk-or-aab> x86
+verify-16k-page-align <path-to-apk-aab-or-apex> x86
 ```
 
 Or, if using the raw script:
 ```sh
 # Default: check arm64-v8a only
-sh ./src/verify-16k-page-align.sh <path-to-apk-or-aab>
+sh ./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex>
 
 # Check arm64-v8a and x86_64
-sh ./src/verify-16k-page-align.sh <path-to-apk-or-aab> x86
+sh ./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex> x86
 ```
 
 Or, make the script executable and run directly:
 ```sh
 chmod +x ./src/verify-16k-page-align.sh
 # Default: check arm64-v8a only
-./src/verify-16k-page-align.sh <path-to-apk-or-aab>
+./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex>
 # Check arm64-v8a and x86_64
-./src/verify-16k-page-align.sh <path-to-apk-or-aab> x86
+./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex> x86
 ```
 
 #### Example output
 ```
-Using readelf: /usr/bin/readelf
-Inspecting: app-release.apk
-Found 3 native libraries
-[OK]   lib/arm64-v8a/libfoo.so aligned to 16KB (no 0x1000 LOAD segments detected).
-[FAIL] lib/arm64-v8a/libbar.so has LOAD segment aligned to 0x1000 (4KB).
+=== APK zip-alignment ===
+lib/arm64-v8a/libfoo.so: 16384 (OK - 16KB aligned)
+lib/arm64-v8a/libbar.so: 4096 (BAD - 4KB aligned)
+Verification FAILED
+=========================
 
-One or more native libraries are not 16KB aligned.
-Ensure AGP >= 8.5.1, NDK r27+, and rebuild any third-party .so with 16KB page alignment.
+=== ELF alignment ===
+lib/arm64-v8a/libfoo.so: ALIGNED (2**14)
+lib/arm64-v8a/libbar.so: UNALIGNED (2**12)
+Found 1 unaligned libs (only arm64-v8a/x86_64 libs need to be aligned).
+=====================
 ```
 
 #### CI/CD Example
@@ -100,24 +105,27 @@ Add to your pipeline to fail builds if any library is not 16KB aligned.
 
 ## How It Works
 
-1. Extracts all `.so` files from your APK/AAB
-2. Uses `readelf` or `llvm-readelf` to inspect ELF program headers
-3. Flags any library with a LOAD segment aligned to 4KB (0x1000)
-4. Passes if all LOAD segments are aligned to 16KB (0x4000)
+1. **APK Zip Alignment**: Uses `zipalign` to verify 16KB zip alignment (requires build-tools 35.0.0-rc3+)
+2. **ELF Analysis**: Extracts all `.so` files from your APK/AAB/APEX
+3. **Memory Alignment Check**: Uses `objdump` to inspect ELF program headers
+4. **Validation**: Flags libraries with LOAD segments aligned to less than 16KB (2^14)
+5. **Pass Criteria**: Libraries are considered aligned if they use 16KB (2^14) or 64KB (2^16) page alignment
 
 ---
 
 ## Platform Support
 
-- Linux only (uses bash, unzip, readelf)
+- Linux only (uses bash, unzip, objdump, zipalign, deapexer)
 - Not supported on Windows or macOS
 
 ---
 
 ## Requirements
 
-- unzip
-- readelf or llvm-readelf (from binutils or Android NDK)
+- `unzip` (for extracting APK/AAB contents)
+- `objdump` (from binutils, for ELF analysis)
+- `zipalign` (from Android build-tools 35.0.0-rc3+, for zip alignment check)
+- `deapexer` (for APEX file support, from Android build-tools)
 
 ---
 
@@ -136,7 +144,7 @@ See [official migration steps](https://developer.android.com/guide/practices/pag
 
 ## Troubleshooting
 
-- If you see `[FAIL] ... has LOAD segment aligned to 0x1000 (4KB)`, update and rebuild the affected library.
+- If you see `UNALIGNED (2**12)` or similar with exponent < 14, update and rebuild the affected library.
 - For AGP < 8.5.1, use `packagingOptions.jniLibs.useLegacyPackaging true` in `build.gradle` (not recommended).
 - For NDK < r27, set linker flags: `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384`.
 

@@ -1,10 +1,10 @@
 # Security Policy
 
-Thank you for helping keep this project and its users safe.
+Thank you for helping keep verify-16k-page-align and its users safe.
 
 ## Supported versions
 
-This repository is a boilerplate. For this template itself, only the latest published version is actively supported with security updates. If you use this repository as a starting point for your own package, define and maintain a policy that fits your needs.
+We actively support the latest published version of verify-16k-page-align with security updates. Given the nature of this tool (shell script for analyzing Android APK/AAB/APEX files), security vulnerabilities are primarily related to file processing and command injection.
 
 | Version        | Supported                        |
 | -------------- | -------------------------------- |
@@ -22,8 +22,14 @@ Please do not open public GitHub issues for security vulnerabilities.
 
 - A description of the issue and potential impact.
 - Steps to reproduce or a proof of concept (PoC).
+- Sample APK/AAB/APEX files that trigger the issue (if safe to share).
 - Affected versions, if known.
 - Any suggested mitigations.
+
+**Note**: This tool processes user-provided APK/AAB/APEX files. Please be mindful of potential security issues related to:
+- Command injection through malicious file names
+- Path traversal vulnerabilities during file extraction
+- Resource exhaustion from malformed archives
 
 ### Our process and SLAs
 
@@ -37,7 +43,8 @@ Please do not open public GitHub issues for security vulnerabilities.
 We will not pursue legal action for good-faith, non-destructive research that respects the following:
 
 - Do not access, modify, or exfiltrate data you do not own.
-- Do not degrade service or impact other users.
-- Do not perform social engineering or physical security testing.
+- Do not test with malicious APK/AAB/APEX files on systems you do not own.
+- Do not attempt to exploit vulnerabilities in production environments.
+- Focus testing on the shell script's file processing and validation logic.
 
 Thank you for your responsible disclosure and for helping improve the security of the ecosystem.
