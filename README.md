@@ -51,13 +51,34 @@ sudo npm i -g verify-16k-page-align
 
 ## Usage
 
+
 ### Check an APK or AAB file
+By default, only `arm64-v8a` libraries are checked. To also check `x86_64` libraries, add `x86` as a second argument.
+
 ```sh
+# Default: check arm64-v8a only
 verify-16k-page-align <path-to-apk-or-aab>
+
+# Check arm64-v8a and x86_64
+verify-16k-page-align <path-to-apk-or-aab> x86
 ```
+
 Or, if using the raw script:
 ```sh
+# Default: check arm64-v8a only
 sh ./src/verify-16k-page-align.sh <path-to-apk-or-aab>
+
+# Check arm64-v8a and x86_64
+sh ./src/verify-16k-page-align.sh <path-to-apk-or-aab> x86
+```
+
+Or, make the script executable and run directly:
+```sh
+chmod +x ./src/verify-16k-page-align.sh
+# Default: check arm64-v8a only
+./src/verify-16k-page-align.sh <path-to-apk-or-aab>
+# Check arm64-v8a and x86_64
+./src/verify-16k-page-align.sh <path-to-apk-or-aab> x86
 ```
 
 #### Example output

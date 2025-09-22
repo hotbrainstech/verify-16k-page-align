@@ -1,84 +1,121 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+progname="${0##*/}"
+progname="${progname%.sh}"
 
-# Verifies that all native .so libraries inside an APK/AAB are aligned to 16KB (0x4000) pages.
-# Usage: scripts/verify-16k-page-align.sh <path-to-apk-or-aab>
+# usage: check_elf_alignment.sh [path to *.so files|path to *.apk]
 
-ARCHIVE_PATH=${1:-}
-if [[ -z "$ARCHIVE_PATH" ]]; then
-  echo "Usage: $0 <path-to-apk-or-aab>"
-  exit 2
-fi
-
-if [[ ! -f "$ARCHIVE_PATH" ]]; then
-  echo "File not found: $ARCHIVE_PATH"
-  exit 2
-fi
-
-tmpdir=$(mktemp -d)
-cleanup() { rm -rf "$tmpdir" || true; }
-trap cleanup EXIT
-
-# Pick readelf or llvm-readelf
-READELF_BIN=""
-if command -v readelf >/dev/null 2>&1; then
-  READELF_BIN=$(command -v readelf)
-elif command -v llvm-readelf >/dev/null 2>&1; then
-  READELF_BIN=$(command -v llvm-readelf)
-else
-  # Try NDK llvm-readelf, if ANDROID_NDK_ROOT provided
-  if [[ -n "${ANDROID_NDK_ROOT:-}" ]] && [[ -x "$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" ]]; then
-    READELF_BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+cleanup_trap() {
+  if [ -n "${tmp}" -a -d "${tmp}" ]; then
+    rm -rf ${tmp}
   fi
+  exit $1
+}
+
+usage() {
+  echo "Host side script to check the ELF alignment of shared libraries."
+  echo "Shared libraries are reported ALIGNED when their ELF regions are"
+  echo "16 KB or 64 KB aligned. Otherwise they are reported as UNALIGNED."
+  echo
+  echo "Usage: ${progname} [input-path|input-APK|input-APEX]"
+}
+
+
+# Parse arguments
+if [ ${#} -lt 1 ] || [ ${#} -gt 2 ]; then
+  usage
+  exit
 fi
 
-if [[ -z "$READELF_BIN" ]]; then
-  echo "readelf/llvm-readelf not found. Ensure binutils or NDK llvm-readelf is installed."
-  exit 3
+case "${1}" in
+  --help|-h|'-?')
+    usage
+    exit
+    ;;
+  *)
+    dir="${1}"
+    ;;
+esac
+
+if ! [ -f "${dir}" -o -d "${dir}" ]; then
+  echo "Invalid file: ${dir}" >&2
+  exit 1
 fi
 
-echo "Using readelf: $READELF_BIN"
-
-echo "Inspecting: $ARCHIVE_PATH"
-
-# List .so entries inside the archive
-if [[ "$ARCHIVE_PATH" == *.apk ]]; then
-  mapfile -t SO_ENTRIES < <(unzip -Z1 "$ARCHIVE_PATH" | grep -E '^lib/[^/]+/[^/]+\.so$' || true)
-elif [[ "$ARCHIVE_PATH" == *.aab ]]; then
-  # AAB layout: <module>/lib/<abi>/*.so (commonly base/lib/...)
-  mapfile -t SO_ENTRIES < <(unzip -Z1 "$ARCHIVE_PATH" | grep -E '(^|.*/)(lib)/[^/]+/[^/]+\.so$' || true)
-else
-  echo "Unknown file extension. Provide .apk or .aab"
-  exit 2
+# Set architecture filter
+arch_filter="arm64-v8a"
+if [ ${#} -eq 2 ] && [ "${2}" = "x86" ]; then
+  arch_filter="arm64-v8a|x86_64"
 fi
 
-if [[ ${#SO_ENTRIES[@]} -eq 0 ]]; then
-  echo "No .so libraries found in archive. Nothing to verify."
-  exit 0
-fi
+if [[ "${dir}" == *.apk ]]; then
+  trap 'cleanup_trap' EXIT
 
-echo "Found ${#SO_ENTRIES[@]} native libraries"
+  echo
+  echo "Recursively analyzing $dir"
+  echo
 
-FAILED=0
-for entry in "${SO_ENTRIES[@]}"; do
-  # Extract to temp file
-  out="$tmpdir/$(basename "$entry")"
-  unzip -p "$ARCHIVE_PATH" "$entry" > "$out"
-
-  # Check program headers for LOAD alignment entries. Fail if any LOAD has 0x1000 alignment.
-  if "$READELF_BIN" -l "$out" | awk '/Program Headers:/,0' | grep -E '^ +LOAD' | grep -q '0x1000'; then
-    echo "[FAIL] $entry has LOAD segment aligned to 0x1000 (4KB)."
-    FAILED=1
+  if { zipalign --help 2>&1 | grep -q "\-P <pagesize_kb>"; }; then
+    echo "=== APK zip-alignment ==="
+    zipalign -v -c -P 16 4 "${dir}" | egrep "lib/(${arch_filter})|Verification"
+    echo "========================="
   else
-    echo "[OK]   $entry aligned to 16KB (no 0x1000 LOAD segments detected)."
+    echo "NOTICE: Zip alignment check requires build-tools version 35.0.0-rc3 or higher."
+    echo "  You can install the latest build-tools by running the below command"
+    echo "  and updating your \$PATH:"
+    echo
+    echo "    sdkmanager \"build-tools;35.0.0-rc3\""
+  fi
+
+  dir_filename=$(basename "${dir}")
+  tmp=$(mktemp -d -t "${dir_filename%.apk}_out_XXXXX")
+  unzip "${dir}" lib/* -d "${tmp}" >/dev/null 2>&1
+  dir="${tmp}"
+fi
+
+if [[ "${dir}" == *.apex ]]; then
+  trap 'cleanup_trap' EXIT
+
+  echo
+  echo "Recursively analyzing $dir"
+  echo
+
+  dir_filename=$(basename "${dir}")
+  tmp=$(mktemp -d -t "${dir_filename%.apex}_out_XXXXX")
+  deapexer extract "${dir}" "${tmp}" || { echo "Failed to deapex." && exit 1; }
+  dir="${tmp}"
+fi
+
+RED="\e[31m"
+GREEN="\e[32m"
+ENDCOLOR="\e[0m"
+
+unaligned_libs=()
+
+echo
+echo "=== ELF alignment ==="
+
+
+matches="$(find "${dir}" -type f | egrep "lib/(${arch_filter})/.*\.so$")"
+IFS=$'\n'
+for match in $matches; do
+  # We could recursively call this script or rewrite it to though.
+  [[ "${match}" == *".apk" ]] && echo "WARNING: doesn't recursively inspect .apk file: ${match}"
+  [[ "${match}" == *".apex" ]] && echo "WARNING: doesn't recursively inspect .apex file: ${match}"
+
+  [[ $(file "${match}") == *"ELF"* ]] || continue
+
+  res="$(objdump -p "${match}" | grep LOAD | awk '{ print $NF }' | head -1)"
+  if [[ $res =~ 2\*\*(1[4-9]|[2-9][0-9]|[1-9][0-9]{2,}) ]]; then
+    echo -e "${match}: ${GREEN}ALIGNED${ENDCOLOR} ($res)"
+  else
+    echo -e "${match}: ${RED}UNALIGNED${ENDCOLOR} ($res)"
+    unaligned_libs+=("${match}")
   fi
 done
 
-if [[ $FAILED -ne 0 ]]; then
-  echo "\nOne or more native libraries are not 16KB aligned."
-  echo "Ensure AGP >= 8.5.1, NDK r27+, and rebuild any third-party .so with 16KB page alignment."
-  exit 4
+if [ ${#unaligned_libs[@]} -gt 0 ]; then
+  echo -e "${RED}Found ${#unaligned_libs[@]} unaligned libs (only arm64-v8a/x86_64 libs need to be aligned).${ENDCOLOR}"
+elif [ -n "${dir_filename}" ]; then
+  echo -e "ELF Verification Successful"
 fi
-
-echo "\nAll native libraries appear 16KB aligned."
-exit 0
+echo "====================="
