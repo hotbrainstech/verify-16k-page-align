@@ -11,14 +11,9 @@
   },
   "license": "MIT",
   "scripts": {
-    "build": "shc -f ./src/verify-16k-page-align.sh -o ./lib/verify-16k-page-align.sh",
-    "format": "npx prettier --write ./**/*.{sh}",
     "lint": "shellcheck src/verify-16k-page-align.sh",
     "lint:fix": "shellcheck -f gcc -o ./lib/verify-16k-page-align.sh",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run lint",
-    "preversion": "npm run lint",
-    "version": "npm run format && git add -A src",
+    "version": "git add -A src",
     "postversion": "git push && git push --tags"
   },
   "bin": {
@@ -53,6 +48,7 @@
   },
   "homepage": "https://github.com/hotbrainstech/verify-16k-page-align#readme",
   "devDependencies": {
-    "@types/node": "^24.5.2"
+    "@types/node": "^24.5.2",
+    "concurrently": "^9.2.1"
   }
 }
