@@ -16,7 +16,7 @@ usage() {
   echo "Shared libraries are reported ALIGNED when their ELF regions are"
   echo "16 KB or 64 KB aligned. Otherwise they are reported as UNALIGNED."
   echo
-  echo "Usage: ${progname} [input-path|input-APK|input-APEX]"
+  echo "Usage: ${progname} [input-path|input-APK|input-AAB|input-APEX]"
 }
 
 
@@ -47,28 +47,30 @@ if [ ${#} -eq 2 ] && [ "${2}" = "x86" ]; then
   arch_filter="arm64-v8a|x86_64"
 fi
 
-if [[ "${dir}" == *.apk ]]; then
+if [[ "${dir}" == *.apk ]] || [[ "${dir}" == *.aab ]]; then
   trap 'cleanup_trap' EXIT
 
   echo
   echo "Recursively analyzing $dir"
   echo
 
-  if { zipalign --help 2>&1 | grep -q "\-P <pagesize_kb>"; }; then
-    echo "=== APK zip-alignment ==="
-    zipalign -v -c -P 16 4 "${dir}" | egrep "lib/(${arch_filter})|Verification"
-    echo "========================="
-  else
-    echo "NOTICE: Zip alignment check requires build-tools version 35.0.0-rc3 or higher."
-    echo "  You can install the latest build-tools by running the below command"
-    echo "  and updating your \$PATH:"
-    echo
-    echo "    sdkmanager \"build-tools;35.0.0-rc3\""
+  if [[ "${dir}" == *.apk ]]; then
+    if { zipalign --help 2>&1 | grep -q "\-P <pagesize_kb>"; }; then
+      echo "=== APK zip-alignment ==="
+      zipalign -v -c -P 16 4 "${dir}" | egrep "lib/(${arch_filter})|Verification"
+      echo "========================="
+    else
+      echo "NOTICE: Zip alignment check requires build-tools version 35.0.0-rc3 or higher."
+      echo "  You can install the latest build-tools by running the below command"
+      echo "  and updating your \$PATH:"
+      echo
+      echo "    sdkmanager \"build-tools;35.0.0-rc3\""
+    fi
   fi
 
   dir_filename=$(basename "${dir}")
-  tmp=$(mktemp -d -t "${dir_filename%.apk}_out_XXXXX")
-  unzip "${dir}" lib/* -d "${tmp}" >/dev/null 2>&1
+  tmp=$(mktemp -d -t "${dir_filename%.*}_out_XXXXX")
+  unzip -q "${dir}" "lib/*" -d "${tmp}"
   dir="${tmp}"
 fi
 
@@ -115,6 +117,8 @@ done
 
 if [ ${#unaligned_libs[@]} -gt 0 ]; then
   echo -e "${RED}Found ${#unaligned_libs[@]} unaligned libs (only arm64-v8a/x86_64 libs need to be aligned).${ENDCOLOR}"
+  echo "====================="
+  exit 1
 elif [ -n "${dir_filename}" ]; then
   echo -e "ELF Verification Successful"
 fi

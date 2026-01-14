@@ -2,22 +2,42 @@
 
 [![npm version](https://img.shields.io/npm/v/verify-16k-page-align.svg)](https://www.npmjs.com/package/verify-16k-page-align)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Linux Only](https://img.shields.io/badge/platform-linux-lightgrey)](#platform-support)
+[![Linux/macOS](https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey)](#platform-support)
 
 A shell script and npm package to verify if your Android APK/AAB/APEX native libraries are aligned to 16KB or 64KB memory pages. This is required for compatibility with Android 15+ devices and Google Play submissions after **November 1, 2025** ([see official docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)).
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+- [Why 16KB Page Alignment?](#why-16kb-page-alignment)
+- [Installation](#installation)
+- [Usage](#usage)
+- [CI/CD Integration](#cicd-integration)
+- [How It Works](#how-it-works)
+- [Platform Support](#platform-support)
+- [Requirements](#requirements)
+- [Migration Guide](#migration-guide)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Contributing](#contributing)
+- [References](#references-further-reading)
+- [Support](#show-your-support)
+- [License](#license)
+
+---
+
 ## Features
 
-- Checks all native `.so` libraries in APK/AAB/APEX for 16KB or 64KB page alignment
-- Works with APK, AAB, and APEX files
-- Uses `objdump` to analyze ELF program headers
-- Includes APK zip-alignment verification (requires Android build-tools 35.0.0-rc3+)
-- Fast, zero dependencies (besides unzip/objdump)
-- CLI and npm global install
-- Clear pass/fail output for CI/CD
-- Supports both arm64-v8a and x86_64 architectures
+- Checks all native `.so` libraries in **APK**, **AAB**, and **APEX** files for 16KB or 64KB page alignment.
+- Supports scanning extracted directories containing native libraries.
+- Uses `objdump` to analyze ELF program headers.
+- **CI/CD Ready**: Returns exit code `1` on failure, `0` on success.
+- Includes APK zip-alignment verification (requires Android build-tools 35.0.0-rc3+).
+- Fast, zero dependencies (besides unzip/objdump).
+- CLI and npm global install.
+- Supports both `arm64-v8a` and `x86_64` architectures.
 
 ---
 
@@ -27,7 +47,6 @@ Starting with Android 15, many devices will use 16KB memory pages for improved p
 - [Android Developers: 16 KB Page Size](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)
 - [Google Play Blog: Prepare for 16 KB page size](https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html)
 - [Medium: Android 15 Mandatory 16KB Memory Page Size](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67)
-- [Reddit discussion](https://www.reddit.com/r/brdev/comments/1nl3fx4/android_15_seus_apps_j%C3%A1_est%C3%A3o_prontos_para_16kb/)
 
 **Benefits:**
 - Faster app launches (3–30% improvement)
@@ -53,37 +72,37 @@ sudo npm i -g verify-16k-page-align
 
 ## Usage
 
-
 ### Check an APK, AAB, or APEX file
 By default, only `arm64-v8a` libraries are checked. To also check `x86_64` libraries, add `x86` as a second argument.
 
+#### Using NPM package
 ```sh
 # Default: check arm64-v8a only
-verify-16k-page-align <path-to-apk-aab-or-apex>
+verify-16k-page-align path/to/app.apk
+verify-16k-page-align path/to/app.aab
 
 # Check arm64-v8a and x86_64
-verify-16k-page-align <path-to-apk-aab-or-apex> x86
+verify-16k-page-align path/to/app.apk x86
 ```
 
-Or, if using the raw script:
-```sh
-# Default: check arm64-v8a only
-sh ./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex>
-
-# Check arm64-v8a and x86_64
-sh ./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex> x86
-```
-
-Or, make the script executable and run directly:
+#### Using local script
+Make sure the script is executable:
 ```sh
 chmod +x ./src/verify-16k-page-align.sh
-# Default: check arm64-v8a only
-./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex>
-# Check arm64-v8a and x86_64
-./src/verify-16k-page-align.sh <path-to-apk-aab-or-apex> x86
+
+# Run
+./src/verify-16k-page-align.sh path/to/app.apk
 ```
 
-#### Example output
+### Check a directory
+You can also run the script against a directory containing extracted native libraries (must follow `lib/arm64-v8a/` structure).
+
+```sh
+verify-16k-page-align path/to/extracted/libs
+```
+
+### Example Output
+
 ```
 === APK zip-alignment ===
 lib/arm64-v8a/libfoo.so: 16384 (OK - 16KB aligned)
@@ -98,25 +117,57 @@ Found 1 unaligned libs (only arm64-v8a/x86_64 libs need to be aligned).
 =====================
 ```
 
-#### CI/CD Example
-Add to your pipeline to fail builds if any library is not 16KB aligned.
+---
+
+## CI/CD Integration
+
+This tool is designed for CI/CD pipelines. It returns a non-zero exit code if verification fails.
+
+### GitHub Actions Example
+
+```yaml
+name: Verify 16KB Alignment
+
+on: [push, pull_request]
+
+jobs:
+  verify-alignment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      # Install dependencies (objdump is usually present, but just in case)
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y binutils unzip
+
+      - name: Install verify-16k-page-align
+        run: sudo npm i -g verify-16k-page-align
+
+      - name: Verify APK
+        run: verify-16k-page-align path/to/your-app-release.apk
+```
 
 ---
 
 ## How It Works
 
-1. **APK Zip Alignment**: Uses `zipalign` to verify 16KB zip alignment (requires build-tools 35.0.0-rc3+)
-2. **ELF Analysis**: Extracts all `.so` files from your APK/AAB/APEX
-3. **Memory Alignment Check**: Uses `objdump` to inspect ELF program headers
-4. **Validation**: Flags libraries with LOAD segments aligned to less than 16KB (2^14)
-5. **Pass Criteria**: Libraries are considered aligned if they use 16KB (2^14) or 64KB (2^16) page alignment
+1. **Extraction**:
+   - For **APK/AAB**: Unzips `lib/` directory to a temporary location.
+   - For **APEX**: Uses `deapexer` to extract contents.
+2. **APK Zip Alignment**: If checking an APK and `zipalign` is available (build-tools 35.0.0-rc3+), verifies 16KB zip alignment.
+3. **ELF Analysis**: Scans all `.so` files using `objdump` to inspect ELF program headers.
+4. **Validation**: Checks if `LOAD` segments are aligned to 16KB (`2**14`) or 64KB (`2**16`).
+5. **Result**: 
+   - Prints status for each library.
+   - Exits with `1` if any unaligned libraries are found.
 
 ---
 
 ## Platform Support
 
-- Linux only (uses bash, unzip, objdump, zipalign, deapexer)
-- Not supported on Windows or macOS
+- **Linux** (Ubuntu, Debian, Fedora, etc.)
+- **macOS** (requires GNU binutils)
+- **Windows** (Not supported directly; use WSL2)
 
 ---
 
@@ -124,29 +175,38 @@ Add to your pipeline to fail builds if any library is not 16KB aligned.
 
 - `unzip` (for extracting APK/AAB contents)
 - `objdump` (from binutils, for ELF analysis)
-- `zipalign` (from Android build-tools 35.0.0-rc3+, for zip alignment check)
-- `deapexer` (for APEX file support, from Android build-tools)
+- `zipalign` (Optional: from Android build-tools 35.0.0-rc3+, for zip alignment check)
+- `deapexer` (Optional: for APEX file support)
+
+### macOS additional requirement
+macOS `objdump` may not support all flags. Install GNU binutils:
+
+```sh
+brew install binutils
+# Ensure gobjdump is in your PATH or linked as objdump
+```
 
 ---
 
 ## Migration Guide
 
 If your app or any dependency uses native code:
-- **Update your build tools:** Use Android Gradle Plugin (AGP) >= 8.5.1 and NDK r27+ (prefer r28+)
-- **Recompile all native libraries** with 16KB alignment
-- **Remove hardcoded page size assumptions** (replace `4096`/`0x1000`/`PAGE_SIZE` with `sysconf(_SC_PAGESIZE)`)
-- **Check all third-party .so files** for compliance
-- **Test on Android 15+ emulators or real devices**
+1. **Update your build tools:** Use Android Gradle Plugin (AGP) >= 8.5.1 and NDK r27+ (prefer r28+).
+2. **Recompile all native libraries** with 16KB alignment.
+3. **Remove hardcoded page size assumptions** (replace `4096`/`0x1000`/`PAGE_SIZE` with `sysconf(_SC_PAGESIZE)`).
+4. **Check all third-party .so files** for compliance.
+5. **Test on Android 15+ emulators or real devices**.
 
-See [official migration steps](https://developer.android.com/guide/practices/page-sizes?hl=pt-br#compile-16-kb-alignment) and [Medium migration guide](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67).
+See [official migration steps](https://developer.android.com/guide/practices/page-sizes?hl=pt-br#compile-16-kb-alignment).
 
 ---
 
 ## Troubleshooting
 
-- If you see `UNALIGNED (2**12)` or similar with exponent < 14, update and rebuild the affected library.
-- For AGP < 8.5.1, use `packagingOptions.jniLibs.useLegacyPackaging true` in `build.gradle` (not recommended).
-- For NDK < r27, set linker flags: `-Wl,-z,max-page-size=16384` and `-Wl,-z,common-page-size=16384`.
+- **`UNALIGNED (2**12)`**: The library is 4KB aligned. You must rebuild it with NDK r27+ or add linker flags.
+- **`command not found: verify-16k-page-align`**: Ensure npm global bin is in your PATH, or use the shell script directly.
+- **`objdump: command not found`**: Install `binutils`.
+- **`Permission denied`**: Run `chmod +x verify-16k-page-align.sh` before executing.
 
 ---
 
@@ -158,8 +218,8 @@ A: No need—Java/Kotlin-only apps do not use native libraries and are already c
 **Q: What if my library is not 16KB aligned?**
 A: Update your build tools and recompile. Contact third-party vendors for updated .so files.
 
-**Q: Can I use this on macOS or Windows?**
-A: No, Linux only. Use a Linux VM or Docker if needed.
+**Q: Can I use this on macOS?**
+A: Yes, install `binutils` via Homebrew.
 
 **Q: Is this required for Play Store submission?**
 A: Yes, for Android 15+ apps after Nov 1, 2025.
@@ -176,7 +236,6 @@ Pull requests and issues are welcome! See [GitHub Issues](https://github.com/hot
 - [Android 16KB Page Size Docs](https://developer.android.com/guide/practices/page-sizes?hl=pt-br)
 - [Google Play Blog](https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html)
 - [Medium: Migration Guide](https://devharshmittal.medium.com/android-15-is-raising-the-bar-mandatory-16kb-memory-page-size-what-developers-need-to-know-4dd81ec58f67)
-- [Reddit: brdev discussion](https://www.reddit.com/r/brdev/comments/1nl3fx4/android_15_seus_apps_j%C3%A1_est%C3%A3o_prontos_para_16kb/)
 
 ## Show your support
 

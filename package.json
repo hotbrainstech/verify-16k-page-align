@@ -27,7 +27,7 @@
   ],
   "os": [
     "linux",
-    "!darwin",
+    "darwin",
     "!win32"
   ],
   "bundleDependencies": [
@@ -58,7 +58,6 @@
   },
   "homepage": "https://github.com/hotbrainstech/verify-16k-page-align#readme",
   "devDependencies": {
-    "@types/node": "^24.5.2",
-    "concurrently": "^9.2.1"
+    "@types/node": "^24.5.2"
   }
 }
