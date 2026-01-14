@@ -1,6 +1,6 @@
 {
   "name": "verify-16k-page-align",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Shell script and npm package to verify Android APK/AAB/APEX native libraries are 16KB or 64KB page aligned for Android 15+ compatibility",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
